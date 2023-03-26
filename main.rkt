@@ -47,7 +47,17 @@
     (pattern (~or* big-endian little-endian native-endian)))
   
   (define-syntax-class binary-pattern
-    #:datum-literals (bytes zero-padded until-byte until-byte* length-prefixed s8 u8 s16 u16 s32 u32 s64 u64 f32 f64)
+    #:datum-literals (bytes zero-padded until-byte until-byte* length-prefixed
+                            set-offset! get-offset
+                            s8 u8 s16 u16 s32 u32 s64 u64 f32 f64)
+
+    (pattern
+      (set-offset! off:exact-nonnegative-integer)
+      #:fail-when (and (not (fixnum? (syntax-e #'off))) #'off) "offset must be a non-negative fixnum"
+      #:attr pat #'_)
+
+    (pattern (get-offset pat))
+
     (pattern
       (bytes pat len:exact-positive-integer)
       #:fail-when (and (not (fixnum? (syntax-e #'len))) #'len) "length must be a positive fixnum")
@@ -120,6 +130,14 @@
 
   (define (compile-pattern bs i bs-len pat)
     (match (syntax->datum pat)
+
+      ((list 'get-offset _)
+       i)
+
+      ((list 'set-offset! _)
+       #`(begin
+           (set! #,i #,(cadr (syntax-e pat)))
+           (void)))
       
       ((list 'bytes _ len)
        (with-syntax ([len (caddr (syntax-e pat))])
@@ -275,7 +293,7 @@
   (define (compile-patterns pats)
     (with-syntax ([(bs i bs-len) (generate-temporaries '(bs i bs-len))])
       #`(lambda (bs)
-          (with-handlers* ([binary-match-fail? (lambda (e) (void))])
+          (with-handlers* ([binary-match-fail? void])
             (let ([bs-len (bytes-length bs)]
                   [i 0])
               (list
@@ -301,6 +319,8 @@
                 '("the cat is orange" #"!"))
   (check-equal? (match #"\x11\0\0\0the cat is orange!" ((binary (length-prefixed (app bytes->string/utf-8 str) u32 little-endian) (rest* leftover)) (list str leftover)))
                 '("the cat is orange" #"!"))
+  (check-equal? (match #"abc" ((binary (u8 a) (get-offset o)) (list a o))) (list (char->integer #\a) 1))
+  (check-equal? (match #"abcd" ((binary (set-offset! 2) (u8 a)) a)) (char->integer #\c))
 
   
   ; IPv4 header
