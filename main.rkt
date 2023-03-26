@@ -41,18 +41,27 @@
     ((native-endian host-order) (system-big-endian?))))
 
 (begin-for-syntax
+
   (define-syntax-class endianness
     #:datum-literals (big-endian little-endian native-endian)
     (pattern (~or* big-endian little-endian native-endian)))
   
   (define-syntax-class binary-pattern
     #:datum-literals (bytes zero-padded until-byte until-byte* length-prefixed s8 u8 s16 u16 s32 u32 s64 u64 f32 f64)
-    (pattern (bytes pat len:integer))
+    (pattern
+      (bytes pat len:exact-positive-integer)
+      #:fail-when (and (not (fixnum? (syntax-e #'len))) #'len) "length must be a positive fixnum")
 
-    (pattern (zero-padded pat len:exact-positive-integer))
+    (pattern
+      (zero-padded pat len:exact-positive-integer)
+      #:fail-when (and (not (fixnum? (syntax-e #'len))) #'len) "length must be a positive fixnum")
 
-    (pattern (until-byte pat delim:exact-nonnegative-integer))
-    (pattern (until-byte* pat delim:exact-nonnegative-integer))
+    (pattern
+      (until-byte pat delim:exact-nonnegative-integer)
+      #:fail-when (and (not (byte? (syntax-e #'delim))) #'delim) "expected a byte? value")
+    (pattern
+      (until-byte* pat delim:exact-nonnegative-integer)
+      #:fail-when (and (not (byte? (syntax-e #'delim))) #'delim) "expected a byte? value")
 
     (pattern (length-prefixed pat))
     
@@ -99,8 +108,6 @@
     (match (syntax->datum pat)
       
       ((list 'bytes _ len)
-       (unless (and (fixnum? len) (fx> len 0))
-         (raise-syntax-error 'binary "Expected (and/c fixnum? positive?)" (caddr (syntax-e pat))))
        (with-syntax ([len (caddr (syntax-e pat))])
          #`(if (fx> (fx+ #,i len) #,bs-len)
                (raise (binary-match-fail))
@@ -109,8 +116,6 @@
                  (subbytes #,bs old-i #,i)))))
 
       ((list 'zero-padded _ len)
-       (unless (and (fixnum? len) (fx> len 0))
-         (raise-syntax-error 'binary "Expected (and/c fixnum? positive?)" (caddr (syntax-e pat))))
        (with-syntax ([len (caddr (syntax-e pat))])
          #`(if (fx> (fx+ #,i len) #,bs-len)
                (raise (binary-match-fail))
@@ -119,8 +124,6 @@
                  (bytestring-trim-right z-padded (lambda (byte) (fx= byte 0)))))))
 
       ((list 'until-byte _ delim)
-       (unless (byte? delim)
-         (raise-syntax-error 'binary "Expected byte?" (caddr (syntax-e pat))))
          #`(let ([idx (bytestring-index #,bs (lambda (byte) (fx= byte #,(caddr (syntax-e pat)))) #,i #,bs-len)]
                  [old-i #,i])
              (cond
@@ -131,8 +134,6 @@
                 (raise (binary-match-fail))))))
 
       ((list 'until-byte* _ delim)
-       (unless (byte? delim)
-         (raise-syntax-error 'binary "Expected byte?" (caddr (syntax-e pat))))
          #`(let ([idx (bytestring-index #,bs (lambda (byte) (fx= byte #,(caddr (syntax-e pat)))) #,i #,bs-len)]
                  [old-i #,i])
              (cond
