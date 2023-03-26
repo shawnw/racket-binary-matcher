@@ -102,17 +102,23 @@
 
   (define (extract-sint bs bs-len i len endianness)
     #`(if (fx<= (fx+ #,i #,len) #,bs-len)
-          (integer-bytes->integer #,bs #t (symbol->endianness #,endianness) #,i (fx+ #,i #,len))
+          (integer-bytes->integer #,bs #t
+                                  #,(if (boolean? (syntax-e endianness)) endianness #`(symbol->endianness #,endianness))
+                                  #,i (fx+ #,i 1))
           (raise (binary-match-fail))))
   
   (define (extract-uint bs bs-len i len endianness)
     #`(if (fx<= (fx+ #,i #,len) #,bs-len)
-          (integer-bytes->integer #,bs #f (symbol->endianness #,endianness) #,i (fx+ #,i #,len))
+          (integer-bytes->integer #,bs #f
+                                  #,(if (boolean? (syntax-e endianness)) endianness #`(symbol->endianness #,endianness))
+                                  #,i (fx+ #,i #,len))
           (raise (binary-match-fail))))
   
   (define (extract-real bs bs-len i len endianness)
     #`(if (fx<= (fx+ #,i #,len) #,bs-len)
-          (floating-point-bytes->real #,bs (symbol->endianness #,endianness) #,i (fx+ #,i #,len))
+          (floating-point-bytes->real #,bs
+                                      #,(if (boolean? (syntax-e endianness)) endianness #`(symbol->endianness #,endianness))
+                                      #,i (fx+ #,i #,len))
           (raise (binary-match-fail))))
 
   (define (uXX->size u)
@@ -188,9 +194,9 @@
                  (raise (binary-match-fail))))))
 
       ((list 'length-prefixed _ size endian) ; size bytes length followed by that many bytes
-       #`(let ([size-len #,(uXX->size (syntax-e (caddr (syntax-e pat))))])
+       #`(let ([size-len #,(uXX->size size)])
            (unless (fx>= (fx- #,bs-len #,i) size-len) (raise (binary-match-fail)))
-           (let* ([len (integer-bytes->integer #,bs #f #,(symbol->endianness (syntax-e (cadddr (syntax-e pat)))) #,i (fx+ #,i size-len))]
+           (let* ([len (integer-bytes->integer #,bs #f #,(symbol->endianness endian) #,i (fx+ #,i size-len))]
                   [end-idx (fx+ #,i len size-len)])
              (if (fx<= end-idx #,bs-len)
                  (let ([b (subbytes #,bs (fx+ #,i size-len) end-idx)])
@@ -221,7 +227,7 @@
       ((list 's16 _ endian)
        #`(let ([old-i #,i])
            (set! #,i (fx+ #,i 2))
-           #,(extract-sint bs bs-len #'old-i #'2 #`(quote #,(caddr (syntax-e pat))))))
+           #,(extract-sint bs bs-len #'old-i #'2 (datum->syntax (caddr (syntax-e pat)) (symbol->endianness endian)))))
       ((list 'u16 id)
        #`(let ([old-i #,i])
            (set! #,i (fx+ #,i 2))
@@ -229,7 +235,7 @@
       ((list 'u16 _ endian)
        #`(let ([old-i #,i])
            (set! #,i (fx+ #,i 2))
-           #,(extract-uint bs bs-len #'old-i #'2 #`(quote #,(caddr (syntax-e pat))))))
+           #,(extract-uint bs bs-len #'old-i #'2 (datum->syntax (caddr (syntax-e pat)) (symbol->endianness endian)))))
 
       ((list 's32 _)
        #`(let ([old-i #,i])
@@ -238,7 +244,7 @@
       ((list 's32 _ endian)
        #`(let ([old-i #,i])
            (set! #,i (fx+ #,i 4))
-           #,(extract-sint bs bs-len #'old-i #'4 #`(quote #,(caddr (syntax-e pat))))))
+           #,(extract-sint bs bs-len #'old-i #'4 (datum->syntax (caddr (syntax-e pat)) (symbol->endianness endian)))))
       ((list 'u32 id)
        #`(let ([old-i #,i])
            (set! #,i (fx+ #,i 4))
@@ -246,7 +252,7 @@
       ((list 'u32 _ endian)
        #`(let ([old-i #,i])
            (set! #,i (fx+ #,i 4))
-           #,(extract-uint bs bs-len #'old-i #'4 #`(quote #,(caddr (syntax-e pat))))))
+           #,(extract-uint bs bs-len #'old-i #'4 (datum->syntax (caddr (syntax-e pat)) (symbol->endianness endian)))))
 
       ((list 's64 _)
        #`(let ([old-i #,i])
@@ -255,7 +261,7 @@
       ((list 's64 _ endian)
        #`(let ([old-i #,i])
            (set! #,i (fx+ #,i 8))
-           #,(extract-sint bs bs-len #'old-i #'8 #`(quote #,(caddr (syntax-e pat))))))
+           #,(extract-sint bs bs-len #'old-i #'8 (datum->syntax (caddr (syntax-e pat)) (symbol->endianness endian)))))
       ((list 'u64 id)
        #`(let ([old-i #,i])
            (set! #,i (fx+ #,i 8))
@@ -263,7 +269,7 @@
       ((list 'u64 _ endian)
        #`(let ([old-i #,i])
            (set! #,i (fx+ #,i 8))
-           #,(extract-uint bs bs-len #'old-i #'8 #`(quote #,(caddr (syntax-e pat))))))
+           #,(extract-uint bs bs-len #'old-i #'8 (datum->syntax (caddr (syntax-e pat)) (symbol->endianness endian)))))
 
       ((list 'f32 _)
        #`(let ([old-i #,i])
@@ -272,7 +278,7 @@
       ((list 'f32 _ endian)
        #`(let ([old-i #,i])
            (set! #,i (fx+ #,i 4))
-           #,(extract-real bs bs-len #'old-i #'4 #`(quote #,(caddr (syntax-e pat))))))
+           #,(extract-real bs bs-len #'old-i #'4 (datum->syntax (caddr (syntax-e pat)) (symbol->endianness endian)))))
 
       ((list 'f64 _)
        #`(let ([old-i #,i])
@@ -281,7 +287,7 @@
       ((list 'f64 _ endian)
        #`(let ([old-i #,i])
            (set! #,i (fx+ #,i 8))
-           #,(extract-real bs bs-len #'old-i #'8 #`(quote #,(caddr (syntax-e pat))))))
+           #,(extract-real bs bs-len #'old-i #'8 (datum->syntax (caddr (syntax-e pat)) (symbol->endianness endian)))))
 
       ((list 'rest* _)
        #`(let ([old-i #,i])
