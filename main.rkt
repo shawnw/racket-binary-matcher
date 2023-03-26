@@ -43,8 +43,8 @@
 (begin-for-syntax
 
   (define-syntax-class endianness
-    #:datum-literals (big-endian little-endian native-endian)
-    (pattern (~or* big-endian little-endian native-endian)))
+    #:datum-literals (big-endian little-endian native-endian network-order host-order)
+    (pattern (~or* big-endian little-endian native-endian network-order host-order)))
   
   (define-syntax-class binary-pattern
     #:datum-literals (bytes zero-padded until-byte until-byte* length-prefixed
@@ -313,7 +313,7 @@
   (check-equal? (match #"abcd1234" ((binary (bytes a 4) (bytes b 4)) (list a b))) '(#"abcd" #"1234"))
   (check-equal? (match (real->floating-point-bytes 3.14 8) ((binary (f64 a)) a)) 3.14)
   (check-equal? (match #"\xFF\x00" ((binary (u16 a little-endian)) a)) 255)
-  (check-equal? (match #"\x00\xFFfilename\0\0\0\0" ((binary (u16 a big-endian) (zero-padded fname 12)) (list a fname))) '(255 #"filename"))
+  (check-equal? (match #"\x00\xFFfilename\0\0\0\0" ((binary (u16 a network-order) (zero-padded fname 12)) (list a fname))) '(255 #"filename"))
   (check-equal? (match #"foo\0bar" ((binary (until-byte a 0) (until-byte* b 0)) (list a b))) '(#"foo" #"bar"))
   (check-equal? (match #"\0\x11the cat is orange!" ((binary (length-prefixed (app bytes->string/utf-8 str)) (rest* leftover)) (list str leftover)))
                 '("the cat is orange" #"!"))

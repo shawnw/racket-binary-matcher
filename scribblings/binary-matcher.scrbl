@@ -17,7 +17,7 @@ The API should be considered very alpha and open to incompatible changes.
          #:literals (binary bytes zero-padded until-byte until-byte* length-prefixed
                             get-offset set-offset!
                             s8 u8 s16 u16 s32 u32 s64 u64 f32 f64
-                            rest* big-endian little-endian native-endian)
+                            rest* big-endian little-endian native-endian network-order host-order)
          (binary byte-pattern ...+ maybe-rest)
          #:grammar
          [(byte-pattern (bytes pat length)
@@ -49,7 +49,9 @@ The API should be considered very alpha and open to incompatible changes.
                          (code:line u64))
           (endianness big-endian
                       (code:line little-endian)
-                      (code:line native-endian))]
+                      (code:line native-endian)
+                      (code:line host-order)
+                      (code:line network-order))]
 
  #:contracts
  [(byte byte?)
