@@ -2,7 +2,7 @@
 (define collection "binary-matcher")
 (define deps '("base" "extra-srfi-libs" "soup-lib"))
 (define build-deps '("scribble-lib" "racket-doc" "rackunit-lib" "net-ip-lib"))
-(define scribblings '(("scribblings/binary-matcher.scrbl" () ("Parsing Libraries"))))
+(define scribblings '(("scribblings/binary-matcher.scrbl" () (parsing-library))))
 (define pkg-desc "Match expander for destructuring bytestrings")
 (define version "0.0")
 (define pkg-authors '(shawnw))
