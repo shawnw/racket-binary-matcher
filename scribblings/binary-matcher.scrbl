@@ -2,7 +2,7 @@
 @require[@for-label[binary-matcher
                     racket/base racket/contract net/ip]]
 
-@title{Destructuring bytestrings using match}
+@title{Extracting binary data from bytestrings using match}
 @author[@author+email["Shawn Wagner" "shawnw.mobile@gmail.com"]]
 
 @defmodule[binary-matcher]
@@ -10,6 +10,9 @@
 This module introduces a new @code{match} pattern for matching and destructuring binary data encoded in a bytestring.
 
 The API should be considered very alpha and open to incompatible changes.
+
+Some similar packages include @hyperlink["https://docs.racket-lang.org/xenomorph/index.html"]{@code{xenomorph}} and the @racketid{#lang} based
+@hyperlink["https://docs.racket-lang.org/binfmt-manual/index.html"]{@code{binfmt}}.
 
 @section{The binary match pattern}
 
@@ -66,11 +69,12 @@ The API should be considered very alpha and open to incompatible changes.
             (match #"\17\240bc"
               ((binary (s16 num big-endian) (bytes rest 2))
                (list num rest))) ; (4000 #"bc")
-            }
+}
 
 @code{bytes} extracts a fixed-width field. @code{zero-padded} extracts a fixed-width field and strips trailing 0 bytes. @code{until-byte} extracts bytes until the given
 delimiter byte is encountered. @code{until-byte*} is the same but a failure to find the delimiter is not a match failure. @code{length-prefixed} reads a length header and then
-that many bytes. It defaults to the 9P specification of a 2 byte big-endian length if not explicitly specified.
+that many bytes. It defaults to the @hyperlink["https://en.wikipedia.org/wiki/9P_(protocol)"]{9P protocol} specification of a 2 byte little-endian length if not explicitly
+specified.
 
 The number patterns should hopefully be self explanatory.
 

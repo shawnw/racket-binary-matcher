@@ -176,10 +176,10 @@
                 (set! #,i #,bs-len)
                 (subbytes #,bs old-i #,bs-len)))))
 
-      ((list 'length-prefixed _) ; Two byte big-endian length followed by that many bytes
+      ((list 'length-prefixed _) ; Two byte little-endian length followed by that many bytes
        #`(begin
            (unless (fx>= (fx- #,bs-len #,i) 2) (raise (binary-match-fail)))
-           (let* ([len (integer-bytes->integer #,bs #f #t #,i (fx+ #,i 2))]
+           (let* ([len (integer-bytes->integer #,bs #f #f #,i (fx+ #,i 2))]
                   [end-idx (fx+ #,i len 2)])
              (if (fx<= end-idx #,bs-len)
                  (let ([b (subbytes #,bs (fx+ #,i 2) end-idx)])
@@ -315,9 +315,9 @@
   (check-equal? (match #"\xFF\x00" ((binary (u16 a little-endian)) a)) 255)
   (check-equal? (match #"\x00\xFFfilename\0\0\0\0" ((binary (u16 a network-order) (zero-padded fname 12)) (list a fname))) '(255 #"filename"))
   (check-equal? (match #"foo\0bar" ((binary (until-byte a 0) (until-byte* b 0)) (list a b))) '(#"foo" #"bar"))
-  (check-equal? (match #"\0\x11the cat is orange!" ((binary (length-prefixed (app bytes->string/utf-8 str)) (rest* leftover)) (list str leftover)))
+  (check-equal? (match #"\x11\0the cat is orange!" ((binary (length-prefixed (app bytes->string/utf-8 str)) (rest* leftover)) (list str leftover)))
                 '("the cat is orange" #"!"))
-  (check-equal? (match #"\x11\0\0\0the cat is orange!" ((binary (length-prefixed (app bytes->string/utf-8 str) u32 little-endian) (rest* leftover)) (list str leftover)))
+  (check-equal? (match #"\0\0\0\x11the cat is orange!" ((binary (length-prefixed (app bytes->string/utf-8 str) u32 big-endian) (rest* leftover)) (list str leftover)))
                 '("the cat is orange" #"!"))
   (check-equal? (match #"abc" ((binary (u8 a) (get-offset o)) (list a o))) (list (char->integer #\a) 1))
   (check-equal? (match #"abcd" ((binary (set-offset! 2) (u8 a)) a)) (char->integer #\c))
