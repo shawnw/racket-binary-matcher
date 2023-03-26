@@ -24,6 +24,7 @@ The API should be considered very alpha and open to incompatible changes.
                         (code:line (until-byte pat byte))
                         (code:line (until-byte* pat byte))
                         (code:line (length-prefixed pat))
+                        (code:line (length-prefixed pat prefix-length endianness))
                         (code:line (number-type pat))
                         (code:line (number-type pat endianness)))
           (maybe-rest (code:line)
@@ -38,6 +39,10 @@ The API should be considered very alpha and open to incompatible changes.
                        (code:line s64)
                        (code:line f32)
                        (code:line f64))
+          (prefix-length u8
+                         (code:line u16)
+                         (code:line u32)
+                         (code:line u64))
           (endianness big-endian
                       (code:line little-endian)
                       (code:line native-endian))]

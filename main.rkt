@@ -64,7 +64,8 @@
       #:fail-when (and (not (byte? (syntax-e #'delim))) #'delim) "expected a byte? value")
 
     (pattern (length-prefixed pat))
-    
+    (pattern (length-prefixed pat (~or* u8 u16 u32 u64) endian:endianness))
+
     (pattern (s8 pat))
     (pattern (u8 pat))
 
@@ -103,7 +104,20 @@
     #`(if (fx<= (fx+ #,i #,len) #,bs-len)
           (floating-point-bytes->real #,bs (symbol->endianness #,endianness) #,i (fx+ #,i #,len))
           (raise (binary-match-fail))))
-  
+
+  (define (uXX->size u)
+    (case u
+      ((u8) 1)
+      ((u16) 2)
+      ((u32) 4)
+      ((u64) 8)))
+
+  (define (symbol->endianness s)
+    (case s
+      ((big-endian network-order) #t)
+      ((little-endian) #f)
+      ((native-endian host-order) (system-big-endian?))))
+
   (define (compile-pattern bs i bs-len pat)
     (match (syntax->datum pat)
       
@@ -151,6 +165,17 @@
                   [end-idx (fx+ #,i len 2)])
              (if (fx<= end-idx #,bs-len)
                  (let ([b (subbytes #,bs (fx+ #,i 2) end-idx)])
+                   (set! #,i end-idx)
+                   b)
+                 (raise (binary-match-fail))))))
+
+      ((list 'length-prefixed _ size endian) ; size bytes length followed by that many bytes
+       #`(let ([size-len #,(uXX->size (syntax-e (caddr (syntax-e pat))))])
+           (unless (fx>= (fx- #,bs-len #,i) size-len) (raise (binary-match-fail)))
+           (let* ([len (integer-bytes->integer #,bs #f #,(symbol->endianness (syntax-e (cadddr (syntax-e pat)))) #,i (fx+ #,i size-len))]
+                  [end-idx (fx+ #,i len size-len)])
+             (if (fx<= end-idx #,bs-len)
+                 (let ([b (subbytes #,bs (fx+ #,i size-len) end-idx)])
                    (set! #,i end-idx)
                    b)
                  (raise (binary-match-fail))))))
@@ -274,6 +299,9 @@
   (check-equal? (match #"foo\0bar" ((binary (until-byte a 0) (until-byte* b 0)) (list a b))) '(#"foo" #"bar"))
   (check-equal? (match #"\0\x11the cat is orange!" ((binary (length-prefixed (app bytes->string/utf-8 str)) (rest* leftover)) (list str leftover)))
                 '("the cat is orange" #"!"))
+  (check-equal? (match #"\x11\0\0\0the cat is orange!" ((binary (length-prefixed (app bytes->string/utf-8 str) u32 little-endian) (rest* leftover)) (list str leftover)))
+                '("the cat is orange" #"!"))
+
   
   ; IPv4 header
   (define header #"\x45\x00\x00\x3c\x1c\x46\x40\x00\x40\x06\xb1\xe6\xac\x10\x0a\x63\xac\x10\x0a\x0c")
